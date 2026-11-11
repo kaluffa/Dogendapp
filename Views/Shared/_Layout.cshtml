@@ -1,0 +1,61 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dogendapp - Dog Show Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Mobile Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <span class="brand-icon">🐾</span>
+                <div class="brand-text">
+                    <h1>Dogendapp</h1>
+                    <span>Handler Portal</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-link active" data-target="tab-overview">
+                    <span class="nav-icon">📊</span>
+                    <span>Overview</span>
+                </button>
+                <button class="nav-link" data-target="tab-dogs">
+                    <span class="nav-icon">🐕</span>
+                    <span>My Dogs</span>
+                </button>
+                <button class="nav-link" data-target="tab-shows">
+                    <span class="nav-icon">🎪</span>
+                    <span>Shows Finder</span>
+                </button>
+                <button class="nav-link" data-target="tab-trophies">
+                    <span class="nav-icon">🏆</span>
+                    <span>Prizes & Ribbons</span>
+                </button>
+                <button class="nav-link" data-target="tab-stays">
+                    <span class="nav-icon">🏨</span>
+                    <span>Accommodations</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <p>Season 2026/2027</p>
+                <small>FCI / AKC Ready</small>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="~/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,452 @@
+@model Dogendapp.Models.DashboardViewModel
+
+<!-- Top Header -->
+<header class="top-bar">
+    <div>
+        <h2 id="page-title">Handler Dashboard</h2>
+        <p class="subtitle">Track your pack, upcoming rings, vaccines, and travel logistics.</p>
+    </div>
+    <div class="quick-actions">
+        <button class="btn btn-primary" onclick="openModal('modal-dog')">+ Add Dog</button>
+        <button class="btn btn-outline" onclick="openModal('modal-show')">+ New Show</button>
+    </div>
+</header>
+
+<!-- KPI Summary Strip -->
+<section class="kpi-grid">
+    <div class="kpi-card">
+        <span class="kpi-label">Active Show Dogs</span>
+        <strong class="kpi-value">@Model.Dogs.Count</strong>
+        <span class="kpi-meta">All microchipped</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">Registered Shows</span>
+        <strong class="kpi-value">@Model.Shows.Count(s => s.IsUserRegistered)</strong>
+        <span class="kpi-meta">Out of @Model.Shows.Count available</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">Trophies & Titles</span>
+        <strong class="kpi-value">@Model.RecentTrophies.Count</strong>
+        <span class="kpi-meta">Lifetime awards</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">Booked Stays</span>
+        <strong class="kpi-value">@Model.Accommodations.Count</strong>
+        <span class="kpi-meta">Pet-friendly confirmed</span>
+    </div>
+</section>
+
+<!-- TAB 1: OVERVIEW (All-in-One Dashboard) -->
+<div id="tab-overview" class="tab-section active">
+    <div class="dashboard-split">
+        <!-- Left Column: Dogs & Vaccines -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>My Dogs & Vaccine Status</h3>
+                <button class="btn-text" onclick="openModal('modal-dog')">+ Register Dog</button>
+            </div>
+            <div class="card-stack">
+                @foreach (var dog in Model.Dogs)
+                {
+                    <div class="entity-card">
+                        <div class="entity-main">
+                            <div>
+                                <span class="badge badge-breed">@dog.Breed</span>
+                                <h4>@dog.Name <small>(@dog.Gender)</small></h4>
+                                <p class="text-muted">@dog.RegisteredName</p>
+                            </div>
+                            <div class="trophy-count">
+                                🏆 @dog.Trophies.Count
+                            </div>
+                        </div>
+                        <div class="entity-footer">
+                            <span>Microchip: @dog.MicrochipNumber</span>
+                            @if (dog.Vaccines.Any())
+                            {
+                                var latestVac = dog.Vaccines.OrderByDescending(v => v.ExpirationDate).First();
+                                <span class="status-pill status-ok">
+                                    💉 @latestVac.Name (Valid until @latestVac.ExpirationDate.ToString("MMM yyyy"))
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="status-pill status-warn">⚠️ No Vaccines Logged</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Right Column: Upcoming Shows & Prizes -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Upcoming Active Shows</h3>
+                <button class="btn-text" onclick="switchTab('tab-shows')">Search All →</button>
+            </div>
+            <div class="card-stack">
+                @foreach (var show in Model.Shows.Take(3))
+                {
+                    <div class="entity-card">
+                        <div class="entity-main">
+                            <div>
+                                <span class="badge @(show.IsUserRegistered ? "badge-success" : "badge-neutral")">
+                                    @(show.IsUserRegistered ? "✓ Registered" : show.Category)
+                                </span>
+                                <h4>@show.Name</h4>
+                                <p class="text-muted">📍 @show.Location • 👨‍⚖️ Judge: @show.MainJudge</p>
+                            </div>
+                            <div class="date-box">
+                                <strong>@show.StartDate.ToString("dd")</strong>
+                                <span>@show.StartDate.ToString("MMM")</span>
+                            </div>
+                        </div>
+                        <div class="entity-footer">
+                            <span>Entry Fee: €@show.EntryFee</span>
+                            <form asp-action="ToggleShowRegistration" method="post" style="display:inline;">
+                                <input type="hidden" name="id" value="@show.Id" />
+                                <button type="submit" class="btn-sm @(show.IsUserRegistered ? "btn-danger-soft" : "btn-primary-soft")">
+                                    @(show.IsUserRegistered ? "Cancel Entry" : "Register Now")
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TAB 2: MY DOGS -->
+<div id="tab-dogs" class="tab-section">
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Registered Dogs Directory</h3>
+            <button class="btn btn-primary" onclick="openModal('modal-dog')">+ Add New Dog</button>
+        </div>
+        <div class="grid-cards">
+            @foreach (var dog in Model.Dogs)
+            {
+                <div class="entity-card">
+                    <span class="badge badge-breed">@dog.Breed</span>
+                    <h4>@dog.Name</h4>
+                    <p class="text-muted">@dog.RegisteredName</p>
+                    <hr class="divider" />
+                    <p><strong>DOB:</strong> @dog.DateOfBirth.ToString("dd MMM yyyy")</p>
+                    <p><strong>Microchip:</strong> @dog.MicrochipNumber</p>
+                    <p><strong>Vaccines:</strong> @dog.Vaccines.Count recorded</p>
+                    <p><strong>Titles Won:</strong> @dog.Trophies.Count prizes</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- TAB 3: SHOWS FINDER (Interactive Search & Filter) -->
+<div id="tab-shows" class="tab-section">
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Search Active Dog Shows</h3>
+            <button class="btn btn-primary" onclick="openModal('modal-show')">+ Add Show Event</button>
+        </div>
+
+        <!-- Search & Filter Bar -->
+        <div class="filter-bar">
+            <input type="text" id="show-search-input" class="search-input" placeholder="Search by show name, city, or judge..." oninput="filterShows()" />
+            <select id="show-category-filter" class="select-input" onchange="filterShows()">
+                <option value="ALL">All Categories</option>
+                <option value="International">International (CACIB)</option>
+                <option value="Championship">Championship</option>
+                <option value="National">National</option>
+            </select>
+            <label class="checkbox-label">
+                <input type="checkbox" id="show-registered-only" onchange="filterShows()" />
+                My Registered Shows Only
+            </label>
+        </div>
+
+        <div id="shows-list" class="grid-cards">
+            @foreach (var show in Model.Shows)
+            {
+                <div class="entity-card show-item"
+                     data-search="@($"{show.Name} {show.Location} {show.MainJudge}".ToLower())"
+                     data-category="@show.Category"
+                     data-registered="@show.IsUserRegistered.ToString().ToLower()">
+                    <div class="entity-main">
+                        <div>
+                            <span class="badge @(show.IsUserRegistered ? "badge-success" : "badge-neutral")">
+                                @show.Category
+                            </span>
+                            <h4>@show.Name</h4>
+                            <p class="text-muted">📍 @show.Location</p>
+                        </div>
+                        <div class="date-box">
+                            <strong>@show.StartDate.ToString("dd")</strong>
+                            <span>@show.StartDate.ToString("MMM yyyy")</span>
+                        </div>
+                    </div>
+                    <p><strong>Main Judge:</strong> @show.MainJudge</p>
+                    <p><strong>Closes:</strong> @show.RegistrationDeadline.ToString("dd MMM yyyy")</p>
+                    <div class="entity-footer">
+                        <strong>€@show.EntryFee</strong>
+                        <form asp-action="ToggleShowRegistration" method="post">
+                            <input type="hidden" name="id" value="@show.Id" />
+                            <button type="submit" class="btn-sm @(show.IsUserRegistered ? "btn-danger-soft" : "btn-primary-soft")">
+                                @(show.IsUserRegistered ? "✓ Registered (Click to Cancel)" : "Mark as Registered")
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- TAB 4: PRIZES & RIBBONS -->
+<div id="tab-trophies" class="tab-section">
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Trophies, Titles & Placements</h3>
+            <button class="btn btn-primary" onclick="openModal('modal-trophy')">+ Record New Prize</button>
+        </div>
+        <div class="grid-cards">
+            @foreach (var trophy in Model.RecentTrophies)
+            {
+                <div class="entity-card">
+                    <span class="badge badge-gold">🏆 @trophy.Title</span>
+                    <h4>@(trophy.Dog?.Name ?? "Dog")</h4>
+                    <p class="text-muted">@trophy.ShowName</p>
+                    <div class="entity-footer">
+                        <span>Judge: @trophy.JudgeName</span>
+                        <span>@trophy.DateWon.ToString("dd MMM yyyy")</span>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- TAB 5: ACCOMMODATIONS -->
+<div id="tab-stays" class="tab-section">
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Show Travel & Pet-Friendly Hotels</h3>
+            <button class="btn btn-primary" onclick="openModal('modal-stay')">+ Add Accommodation</button>
+        </div>
+        <div class="grid-cards">
+            @foreach (var stay in Model.Accommodations)
+            {
+                <div class="entity-card">
+                    <span class="badge @(stay.PetFeeIncluded ? "badge-success" : "badge-neutral")">
+                        @(stay.PetFeeIncluded ? "🐾 Pet Fee Included" : "Standard Booking")
+                    </span>
+                    <h4>@stay.HotelName</h4>
+                    <p class="text-muted">For: @stay.ShowName</p>
+                    <div class="entity-footer">
+                        <span>@stay.CheckIn.ToString("dd MMM") - @stay.CheckOut.ToString("dd MMM yyyy")</span>
+                        <strong>€@stay.TotalCost</strong>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODALS FOR DATA ENTRY ================= -->
+
+<!-- Modal: Add Dog -->
+<div id="modal-dog" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>Register a New Dog</h3>
+            <button class="close-btn" onclick="closeModal('modal-dog')">&times;</button>
+        </div>
+        <form asp-action="AddDog" method="post" class="modal-form">
+            <label>Call Name *</label>
+            <input type="text" name="Name" required placeholder="e.g., Apollo" />
+
+            <label>Pedigree / Registered Name</label>
+            <input type="text" name="RegisteredName" placeholder="e.g., Ch. Starlight's Golden Sun" />
+
+            <div class="form-row">
+                <div>
+                    <label>Breed *</label>
+                    <input type="text" name="Breed" required placeholder="e.g., Golden Retriever" />
+                </div>
+                <div>
+                    <label>Gender</label>
+                    <select name="Gender">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label>Date of Birth</label>
+                    <input type="date" name="DateOfBirth" required value="2024-01-01" />
+                </div>
+                <div>
+                    <label>Microchip Number</label>
+                    <input type="text" name="MicrochipNumber" placeholder="15-digit ISO code" />
+                </div>
+            </div>
+
+            <hr class="divider" />
+            <label>Primary Vaccine Record (Optional)</label>
+            <div class="form-row">
+                <input type="text" name="InitialVaccineName" placeholder="e.g., Rabies + DHPP" />
+                <input type="date" name="VaccineExpDate" />
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-dog')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Dog</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Add Show -->
+<div id="modal-show" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>Add New Dog Show</h3>
+            <button class="close-btn" onclick="closeModal('modal-show')">&times;</button>
+        </div>
+        <form asp-action="AddShow" method="post" class="modal-form">
+            <label>Show Title *</label>
+            <input type="text" name="Name" required placeholder="e.g., Madrid Royal Canine Cup" />
+
+            <div class="form-row">
+                <div>
+                    <label>City & Country *</label>
+                    <input type="text" name="Location" required placeholder="e.g., Madrid, Spain" />
+                </div>
+                <div>
+                    <label>Category</label>
+                    <select name="Category">
+                        <option value="International (CACIB)">International (CACIB)</option>
+                        <option value="Championship">Championship</option>
+                        <option value="National">National</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label>Show Date *</label>
+                    <input type="date" name="StartDate" required value="2026-12-20" />
+                </div>
+                <div>
+                    <label>Entry Deadline *</label>
+                    <input type="date" name="RegistrationDeadline" required value="2026-12-01" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label>Main Judge</label>
+                    <input type="text" name="MainJudge" placeholder="Judge Name" />
+                </div>
+                <div>
+                    <label>Entry Fee (€)</label>
+                    <input type="number" step="0.01" name="EntryFee" value="45.00" />
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-show')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Publish Show</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Add Trophy -->
+<div id="modal-trophy" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>Record New Prize / Ribbon</h3>
+            <button class="close-btn" onclick="closeModal('modal-trophy')">&times;</button>
+        </div>
+        <form asp-action="AddTrophy" method="post" class="modal-form">
+            <label>Select Dog *</label>
+            <select name="DogId" required>
+                @foreach (var dog in Model.Dogs)
+                {
+                    <option value="@dog.Id">@dog.Name (@dog.Breed)</option>
+                }
+            </select>
+
+            <label>Title / Award Won *</label>
+            <input type="text" name="Title" required placeholder="e.g., Best of Breed (BOB), CACIB, 1st Exc." />
+
+            <label>Show Name *</label>
+            <input type="text" name="ShowName" required placeholder="e.g., Pyrenees Cup" />
+
+            <div class="form-row">
+                <div>
+                    <label>Date Won</label>
+                    <input type="date" name="DateWon" required value="2026-11-11" />
+                </div>
+                <div>
+                    <label>Judge Name</label>
+                    <input type="text" name="JudgeName" placeholder="Judge Name" />
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-trophy')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Award</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Add Accommodation -->
+<div id="modal-stay" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>Book Show Accommodation</h3>
+            <button class="close-btn" onclick="closeModal('modal-stay')">&times;</button>
+        </div>
+        <form asp-action="AddAccommodation" method="post" class="modal-form">
+            <label>Hotel / Airbnb Name *</label>
+            <input type="text" name="HotelName" required placeholder="e.g., Hotel Miramar Dog Suites" />
+
+            <label>Associated Dog Show *</label>
+            <input type="text" name="ShowName" required placeholder="e.g., Valencia Winter Championship" />
+
+            <div class="form-row">
+                <div>
+                    <label>Check-In</label>
+                    <input type="date" name="CheckIn" required value="2026-12-10" />
+                </div>
+                <div>
+                    <label>Check-Out</label>
+                    <input type="date" name="CheckOut" required value="2026-12-13" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div>
+                    <label>Total Cost (€)</label>
+                    <input type="number" step="0.01" name="TotalCost" value="250.00" />
+                </div>
+                <div style="display:flex; align-items:center; padding-top:1.5rem;">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="PetFeeIncluded" value="true" checked />
+                        Pet Fee Included
+                    </label>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-stay')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Booking</button>
+            </div>
+        </form>
+    </div>
+</div>
